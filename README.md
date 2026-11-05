@@ -44,7 +44,7 @@ Not in elekloader's shop yet. You need:
   (`mods/core-dn1`, its README says how) with the stock OS file. Older cores refuse this mod.
 - **elekloader from source** (main has core-dn1 5.0), with Python 3.9 or newer, to build the mod
   and the OS.
-- **This mod:** `fxsend-0.1.elemod` for OS 1.43, `fxsend-0.1-os1.44.elemod` for 1.44, from
+- **This mod:** `fxsend-0.2.elemod` for OS 1.43, `fxsend-0.2-os1.44.elemod` for 1.44, from
   [this repository's releases](https://github.com/irpina/digisendfx/releases) once there are any, or
   built from this folder (Build, below).
 - **The stock OS file:** `Digitone_and_Digitone_Keys_OS1.44.syx` or `..._OS1.43.syx`, from
@@ -55,7 +55,7 @@ Build your OS (or in elekloader's window, run from source: **+ Install from file
 
 ```bash
 python -m elekloader.patch --stock Digitone_and_Digitone_Keys_OS1.44.syx \
-    --mod core-5.0-os1.44.elemod --mod fxsend-0.1-os1.44.elemod \
+    --mod core-5.0-os1.44.elemod --mod fxsend-0.2-os1.44.elemod \
     --out Digitone_OS1.44-sendfx.syx --version XXXX
 ```
 
@@ -72,19 +72,26 @@ startup menu, and press **TRIG 4** for OS UPGRADE. Then send the stock
 ## Using it
 
 Hold a track key for the Mod Menu and pick **SEND FX**: its page opens over
-the Digitone's. While it is open every key but PLAY, STOP and TEMPO is the
-page's; NO (or MIDI) closes it. What it sets stays on with the page closed,
+the Digitone's, as one more page. The knobs, their pushes, PAGE, YES and NO
+are the page's; every other key is still the Digitone's, so the sequencer
+plays and records, the trig keys set trigs, the track keys pick tracks and
+RECORD and the arrows work as ever. TRIG, SYN1, SYN2, FLTR, AMP and LFO go to
+their stock pages, and the menus, MIDI, TEMPO and anything with FUNC held go
+to their stock screens; each closes the page, as NO does. The Mod Menu opens
+it again on the page it was on. What it sets stays on with the page closed,
 and is the project's, saved with it.
 
 | key | |
 |---|---|
-| SYN1 | CHORUS |
-| SYN2 | DELAY + DRIVE |
-| FLTR, AMP | LFO 1, LFO 2 (LFO: one, then the other) |
-| LEFT, RIGHT, PAGE | the four pages in turn |
+| PAGE | the four pages in turn: CHORUS, DELAY + DRIVE, LFO 1, LFO 2 |
 | knob A-H | its control; the title bar shows its name and value a second |
 | push A-H | its default, or an option's next value |
-| YES | SETUP: the MIDI CC channel, and the CPU meter; NO back |
+| YES | SETUP: the MIDI CC channel (knobs or arrows), and the CPU meter; NO back |
+| NO | closes the page |
+
+While the page is open the knobs are its own, so a trig held with a knob
+turned changes the control, not a lock on the trig: close the page to lock
+stock parameters.
 
 The left column shows what the mod runs (C the chorus, S SHORT, D the
 drive) over the two LFOs' bars.
@@ -166,9 +173,9 @@ same). This is what a mod on `ev_render_fx` can count on.
 
 ```bash
 python3 gentables.py > tables.h        # only after changing gentables.py
-python -m elekloader.sdk.build . --stock Digitone_and_Digitone_Keys_OS1.43.syx   # out/fxsend-0.1.elemod
-python -m elekloader.sdk.build . --stock Digitone_and_Digitone_Keys_OS1.44.syx   # out/fxsend-0.1-os1.44.elemod
-python -m elekloader.lint out/fxsend-0.1.elemod --stock Digitone_and_Digitone_Keys_OS1.43.syx --with core-5.0.elemod
+python -m elekloader.sdk.build . --stock Digitone_and_Digitone_Keys_OS1.43.syx   # out/fxsend-0.2.elemod
+python -m elekloader.sdk.build . --stock Digitone_and_Digitone_Keys_OS1.44.syx   # out/fxsend-0.2-os1.44.elemod
+python -m elekloader.lint out/fxsend-0.2.elemod --stock Digitone_and_Digitone_Keys_OS1.43.syx --with core-5.0.elemod
 ```
 
 ## What was checked
@@ -193,7 +200,12 @@ and a probe mod beside it for the measurements (not part of this mod):
   2.5 dB louder than the stock drive's at 64; at full MOVD and BOOST about
   as loud as the stock drive at full;
 - the page: the Mod Menu entry, the four pages and SETUP draw; knobs, pushes,
-  page keys, YES and NO do what is above; CC 21 and 29 on SETUP's channel
+  PAGE, YES and NO do what is above; with it open, T2 picks track 2, the
+  trig keys in grid record add trigs to the pattern (it plays them, as with
+  the page closed), a knob turned after SYN1 reaches the stock's parameter
+  and not the page, TRIG and SYN1 show their stock pages, NO the stock
+  screen it was opened over, and the Mod Menu opens the page again where it
+  was; CC 21 and 29 on SETUP's channel
   set VOIC and SHRT, a CC on another channel is left alone (with the
   emulator's INPUT FROM set to its port);
 - CPU, with digikit's cycle model (250 MHz) and the factory pattern

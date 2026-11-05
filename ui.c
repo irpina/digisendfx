@@ -2,20 +2,23 @@
 /* SEND FX's UI (the UI task, and the MIDI task for CCs): its Mod Menu entry, its page, its keys and knobs, its
  * project data and its MIDI CCs.
  *
- *   SEND FX in core-dn1's Mod Menu (hold a track key) opens its page over the Digitone's; every key but PLAY,
- *   STOP and TEMPO is the page's while it is open, and NO (or MIDI) closes it. What the page sets stays on with
- *   the page closed: it is the project's, saved with it.
- *   SYN1 CHORUS, SYN2 DELAY + DRIVE, FLTR LFO 1, AMP LFO 2 (LFO: LFO 1, again LFO 2); LEFT, RIGHT or PAGE the
- *   four in turn. Turn a knob: its value, shown in the title bar a second. Push it: its default, or an option's
- *   next value. YES: SETUP (the MIDI CC channel, and the CPU meter); NO back.
+ *   SEND FX in core-dn1's Mod Menu (hold a track key) opens its page over the Digitone's, as one more page:
+ *   the knobs, their pushes, PAGE, YES and NO are the page's, every other key the Digitone's (the sequencer,
+ *   the trig and track keys, RECORD, the arrows). TRIG, SYN1, SYN2, FLTR, AMP, LFO, the menus, MIDI, TEMPO and
+ *   FUNC's combinations go to their stock screens and close the page; NO closes it too, and the Mod Menu opens
+ *   it again where it was. What the page sets stays on with the page closed: it is the project's, saved with it.
+ *   PAGE: the four pages in turn (CHORUS, DELAY + DRIVE, LFO 1, LFO 2). Turn a knob: its value, shown in the
+ *   title bar a second. Push it: its default, or an option's next value. YES: SETUP (the MIDI CC channel, and
+ *   the CPU meter; the arrows step the channel); NO back.
  *   MIDI: on SETUP's CC channel (OFF by default) CC 20-51 are the 32 controls, page by page, A to H. */
 #include "fxsend.h"
 #include "tables.h"                     /* the curves the screen shows */
 
 #pragma GCC optimize ("Os")            /* the UI: small beats fast */
 
+#define KEY_FUNC    1
 #define KEY_MIDI    2
-#define KEY_TEMPO   9
+#define KEY_RECORD  10
 #define KEY_PLAY    11
 #define KEY_STOP    12
 #define KEY_YES     13
@@ -25,10 +28,7 @@
 #define KEY_LEFT    17
 #define KEY_RIGHT   18
 #define KEY_PAGE    19
-#define KEY_SYN1    21
-#define KEY_SYN2    22
-#define KEY_FLTR    23
-#define KEY_AMP     24
+#define KEY_TRIG    20
 #define KEY_LFO     25
 #define KEY_PUSH_A  46
 #define EV_KEY(ev)   (*(u32 *)((char *)(ev) + 12))
@@ -200,20 +200,54 @@ static void push(int i)
     ui_flash_i = (u8)i;
 }
 
+/* The page is one more page of the Digitone's, not a mode: it takes only what it needs (the knobs, their
+ * pushes, PAGE, YES and NO, and in SETUP the arrows), and every other key goes on to the stock as ever, so
+ * the sequencer, the trig and track keys, RECORD and the arrows work under it. A key that brings up a stock
+ * screen (TRIG, SYN1-LFO, the menus, MIDI, TEMPO, or anything with FUNC held) closes it first; the Mod Menu
+ * opens it again on the page it had. A release goes where its press went. */
+static u8 took[64];                     /* 1: the page took this key's press, so it takes its release */
+
+static int screen_key(u32 key, u32 fl)
+{
+    if (key == KEY_FUNC || key == KEY_PLAY || key == KEY_STOP || key == KEY_RECORD)
+        return 0;
+    if (fl & 2)                         /* with FUNC: copy, paste, the menus, a save ... */
+        return 1;
+    return key < KEY_RECORD || (key >= KEY_TRIG && key <= KEY_LFO);
+}
+
+static int own_key(u32 key, u32 fl)
+{
+    if (fl & 2)
+        return 0;
+    if (key == KEY_YES || key == KEY_NO || key == KEY_PAGE || (key >= KEY_PUSH_A && key < KEY_PUSH_A + 8))
+        return 1;
+    return ui_setup && key >= KEY_UP && key <= KEY_RIGHT;
+}
+
 int fs_key(void *brain, void *ev)
 {
     u32 key = EV_KEY(ev), fl = EV_FLAGS(ev);
     (void)brain;
+    if (key >= 64)
+        return 0;
+    if (!(fl & 1)) {                    /* a release */
+        if (!took[key])
+            return 0;
+        took[key] = 0;
+        return 1;
+    }
     if (!ui_open)
         return 0;
-    if (key == KEY_PLAY || key == KEY_STOP || key == KEY_TEMPO)
-        return 0;                       /* the sequencer and its tempo stay the Digitone's */
-    if (!(fl & 1) || (fl & 8))
-        return 1;                       /* releases and repeats */
-    if (key == KEY_MIDI) {
-        ui_open = 0;
-        return 0;                       /* on to the stock MIDI mode */
-    } else if (key == KEY_YES) {
+    if (!own_key(key, fl)) {
+        if (screen_key(key, fl))
+            ui_open = 0;                /* the stock's screen, the page shut */
+        return 0;
+    }
+    took[key] = 1;
+    if (fl & 8)
+        return 1;                       /* repeats */
+    if (key == KEY_YES) {
         ui_setup = !ui_setup;
     } else if (key == KEY_NO) {
         if (ui_setup)
@@ -225,14 +259,8 @@ int fs_key(void *brain, void *ev)
             fs_cc_ch = (u8)(fs_cc_ch ? fs_cc_ch - 1 : 16);
         else if (key == KEY_RIGHT || key == KEY_UP)
             fs_cc_ch = (u8)(fs_cc_ch < 16 ? fs_cc_ch + 1 : 0);
-    } else if (key >= KEY_SYN1 && key <= KEY_AMP) {
-        ui_pg = (u8)(key - KEY_SYN1);
-        ui_flash = 0;
-    } else if (key == KEY_LFO) {
-        ui_pg = (u8)(ui_pg == 2 ? 3 : 2);
-        ui_flash = 0;
-    } else if (key == KEY_LEFT || key == KEY_RIGHT || key == KEY_PAGE) {
-        ui_pg = (u8)((ui_pg + (key == KEY_LEFT ? NPAGE - 1 : 1)) % NPAGE);
+    } else if (key == KEY_PAGE) {
+        ui_pg = (u8)((ui_pg + 1) % NPAGE);
         ui_flash = 0;
     } else if (key >= KEY_PUSH_A && key < KEY_PUSH_A + 8) {
         push(8 * ui_pg + (int)(key - KEY_PUSH_A));
@@ -278,6 +306,7 @@ int32_t fs_midi(const uint8_t *msg, int32_t len, int32_t source)
 
 /* ---- the UI tick ------------------------------------------------------------------------------------- */
 static u32 ui_sig;
+static u8 ui_was;                       /* ui_open at the last tick */
 
 static u32 signature(void)
 {
@@ -303,11 +332,14 @@ void fs_tick(void *ctrl)
         ui_flash--;
     if (ui_open) {
         u32 sg = signature();
-        if (sg != ui_sig) {
+        if (sg != ui_sig || !ui_was) {
             ui_sig = sg;
             *((unsigned char *)ctrl + 0x20) = 1;
         }
+    } else if (ui_was) {
+        *((unsigned char *)ctrl + 0x20) = 1;    /* closed: the stock's screen again */
     }
+    ui_was = ui_open;
 }
 
 /* ---- the screen: 128 x 64, y = 0 the bottom row; drawn as the pedals draw theirs ------------------------ */
