@@ -1,0 +1,30 @@
+{
+ "id": "fxsend", "version": "0.1",
+ "license": "GPL-2.0-or-later",
+ "title": "SEND FX", "category": "Effect", "author": "irpina",
+ "description": "More from the Digitone mk1's own send effects and master drive, with the synths playing as ever: a lush chorus of its own in place of the stock one (LUSH: two to four swept voices, vibe, drift, tone, saturation and feedback, its depth, speed, high-pass and width still the kit's DPTH, SPD, HPF and WDTH), two LFOs that move any chorus, delay, reverb or drive parameter (synced or free, seven waves, reset on PLAY), a SHORT delay time from 0.67 ms to 40 ms for comb and flanger sounds (an LFO on it flanges), and HARD, FUZZ and FOLD in place of the master drive (MOVD the amount, with BOOST, TONE and LEVEL). SEND FX in core-dn1's Mod Menu (hold a track key) opens its page; what it sets is the project's, saved with it, and stays on with the page closed. MIDI CCs on a channel of your choice. Needs core-dn1 5.0.",
+ "device": "digitone-mk1", "os": "1.43",
+ "ports": {"1.44": {}},
+ "sources": ["dsp.c", "ui.c"],
+ "cflags": ["-fno-tree-loop-distribute-patterns"],
+ "subscribe": [
+  {"event": "ev_render_params", "fn": "fs_params", "order": 60},
+  {"event": "ev_render_fx", "fn": "fs_fx", "order": 50},
+  {"event": "ev_render_in", "fn": "fs_rin", "order": 90},
+  {"event": "ev_render_out", "fn": "fs_rout", "order": 10},
+  {"event": "ev_transport", "fn": "fs_transport", "order": 50},
+  {"event": "ev_midi_in", "fn": "fs_midi", "order": 50},
+  {"event": "ev_key", "fn": "fs_key", "order": 12},
+  {"event": "ev_enc", "fn": "fs_enc", "order": 12},
+  {"event": "ev_tick", "fn": "fs_tick", "order": 67},
+  {"event": "ev_draw", "fn": "fs_draw", "order": 97}
+ ],
+ "contribute": [
+  {"to": "core_menu", "order": 37, "data": "00000000",
+   "relocs": [[0, "abs32", "sym:fs_menu", 0]]},
+  {"to": "core_projdata", "order": 76, "data": "00000000",
+   "relocs": [[0, "abs32", "sym:fs_projdata", 0]]}
+ ],
+ "resources": {"core": "5.0", "names": ["projdata:FXSD"]},
+ "requires": ["core"]
+}
